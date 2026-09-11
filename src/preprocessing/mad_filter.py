@@ -7,11 +7,14 @@ implementation: retain features with MAD strictly above a chosen quantile.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
+
+from .config import load_preprocessing_config
 
 
 def _validate_numeric_dataframe(data: pd.DataFrame) -> None:
@@ -39,12 +42,13 @@ def _validate_quantile(value: float) -> None:
 def calculate_mad(
     data: pd.DataFrame,
     *,
-    scale: float = 1.4826,
+    scale: float | None = None,
+    config_path: str | Path | None = None,
 ) -> pd.Series:
     """Calculate each feature's scaled median absolute deviation.
 
-    ``scale=1.4826`` matches the default consistency constant used by R's
-    ``stats::mad``.  Missing values are ignored.
+    An omitted scale is read from mad_filter.scale in the configuration.
+    Explicit scale values override YAML. Missing values are ignored.
 
     Returns
     -------
@@ -53,6 +57,8 @@ def calculate_mad(
         a NaN score and will not be retained by ``MADFilter``.
     """
     _validate_numeric_dataframe(data)
+    if scale is None:
+        scale = load_preprocessing_config(config_path)["mad_filter"]["scale"]
     if not np.isfinite(scale) or scale <= 0:
         raise ValueError("scale must be a positive finite number")
 
@@ -72,34 +78,47 @@ class MADFilter(TransformerMixin, BaseEstimator):
     Parameters
     ----------
     quantile:
-        MAD quantile used as the strict lower boundary.  For example, 0.75
-        retains approximately the top 25% most variable features, while 0.50
-        retains approximately the top 50%.  Ties at the boundary are excluded,
+        MAD quantile used as the strict lower boundary. None reads
+        mad_filter.quantile from YAML at fit time. Ties at the boundary are excluded,
         matching the original R implementation's ``MAD > quantile(MAD, q)``.
     scale:
-        MAD consistency constant.  The default 1.4826 matches R's
-        ``stats::mad``.
+        MAD consistency constant. None reads mad_filter.scale from YAML.
+    config_path:
+        Optional path to a complete configuration. None uses the project's
+        configs/preprocessing.yaml. Explicit parameter values override YAML.
     """
 
-    def __init__(self, quantile: float = 0.75, scale: float = 1.4826) -> None:
+    def __init__(
+        self,
+        quantile: float | None = None,
+        scale: float | None = None,
+        *,
+        config_path: str | Path | None = None,
+    ) -> None:
         self.quantile = quantile
         self.scale = scale
+        self.config_path = config_path
 
     def fit(self, X: pd.DataFrame, y: Any = None) -> MADFilter:
         """Learn the MAD threshold and retained features from training data."""
-        _validate_quantile(self.quantile)
-        self.mad_scores_ = calculate_mad(X, scale=self.scale)
+        quantile, scale = self.quantile, self.scale
+        if quantile is None or scale is None:
+            config = load_preprocessing_config(self.config_path)["mad_filter"]
+            quantile = config["quantile"] if quantile is None else quantile
+            scale = config["scale"] if scale is None else scale
+        _validate_quantile(quantile)
+        self.mad_scores_ = calculate_mad(X, scale=scale)
 
         finite_scores = self.mad_scores_.dropna()
         if finite_scores.empty:
             raise ValueError("MAD cannot be calculated for any feature")
 
+        self.quantile_ = quantile
+        self.scale_ = scale
         self.feature_names_in_ = np.asarray(X.columns, dtype=object)
         self.n_features_in_ = X.shape[1]
-        self.mad_threshold_ = float(finite_scores.quantile(self.quantile))
-        self.support_mask_ = (
-            self.mad_scores_ > self.mad_threshold_
-        ).to_numpy()
+        self.mad_threshold_ = float(finite_scores.quantile(self.quantile_))
+        self.support_mask_ = (self.mad_scores_ > self.mad_threshold_).to_numpy()
         self.selected_features_ = self.feature_names_in_[self.support_mask_]
 
         if self.selected_features_.size == 0:
@@ -118,14 +137,11 @@ class MADFilter(TransformerMixin, BaseEstimator):
         missing_columns = set(self.selected_features_) - set(X.columns)
         if missing_columns:
             raise ValueError(
-                "Input data is missing fitted features: "
-                f"{sorted(missing_columns)}"
+                f"Input data is missing fitted features: {sorted(missing_columns)}"
             )
         return X.loc[:, self.selected_features_].copy()
 
-    def get_feature_names_out(
-        self, input_features: Any = None
-    ) -> np.ndarray:
+    def get_feature_names_out(self, input_features: Any = None) -> np.ndarray:
         """Return the retained feature names."""
         if not hasattr(self, "selected_features_"):
             raise RuntimeError(
@@ -137,12 +153,16 @@ class MADFilter(TransformerMixin, BaseEstimator):
 def filter_by_mad(
     data: pd.DataFrame,
     *,
-    quantile: float = 0.75,
-    scale: float = 1.4826,
+    quantile: float | None = None,
+    scale: float | None = None,
+    config_path: str | Path | None = None,
 ) -> pd.DataFrame:
     """Filter a DataFrame using MAD scores calculated from that DataFrame.
 
+    Omitted parameters are read from YAML; explicit values override them.
     For cross-validation, prefer ``MADFilter`` explicitly so the filter is
     fitted on the training fold and reused on the validation fold.
     """
-    return MADFilter(quantile=quantile, scale=scale).fit_transform(data)
+    return MADFilter(
+        quantile=quantile, scale=scale, config_path=config_path
+    ).fit_transform(data)

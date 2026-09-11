@@ -42,7 +42,7 @@ def test_calculate_mad_ignores_missing_values() -> None:
         }
     )
 
-    scores = calculate_mad(data)
+    scores = calculate_mad(data, scale=1.4826)
 
     assert scores["constant"] == 0.0
     assert scores["variable"] == pytest.approx(2.0 * 1.4826)

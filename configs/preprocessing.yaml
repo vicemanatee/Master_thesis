@@ -1,0 +1,18 @@
+# Default preprocessing parameters. Explicit function/estimator arguments override
+# these values, allowing inner-CV parameter searches without editing this file.
+# Input matrix: rows = patients, columns = omics features.
+
+missing_value_filter:
+  # Keep features with missing_fraction <= this value (at least 70% observed).
+  max_missing_fraction: 0.30
+
+mad_filter:
+  # Keep MAD > this quantile: 0.75 keeps approximately the top 25%; 0.50 the top 50%.
+  quantile: 0.75
+  # R stats::mad consistency constant. Use 1.0 for unscaled MAD.
+  scale: 1.4826
+
+diagnostics:
+  name: data
+  before_name: before
+  after_name: after

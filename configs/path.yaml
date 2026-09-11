@@ -7,7 +7,8 @@ raw_data:
     protein group: '/Users/liyangqing/Desktop/Master Program/Master thesis/BC_Data/raw/diann_search_results_proteomics/230814_report.pg_matrix.tsv'
     gene group: '/Users/liyangqing/Desktop/Master Program/Master thesis/BC_Data/raw/diann_search_results_proteomics/230814_report.gg_matrix.tsv'
     precursor: '/Users/liyangqing/Desktop/Master Program/Master thesis/BC_Data/raw/diann_search_results_proteomics/230814_report.pr_matrix.tsv'
-key coloumns:
+
+prepared_data:
   phosphoproteome: 
     protein group: '/Users/liyangqing/Desktop/Master Program/Master thesis/BC_Data/Key_col/phosphoproteome/230815_report.pg_matrix.tsv'
     gene group: '/Users/liyangqing/Desktop/Master Program/Master thesis/BC_Data/Key_col/phosphoproteome/230815_report.gg_matrix.tsv'
