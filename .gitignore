@@ -1,0 +1,53 @@
+# Python environments and bytecode
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test, type-checker, and linter caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Packaging artifacts
+build/
+dist/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+
+# Local datasets and generated benchmark outputs
+/data/*
+!/data/.gitkeep
+!/data/README.md
+/results/*
+!/results/.gitkeep
+!/results/README.md
+
+# Experiment trackers and logs
+mlruns/
+wandb/
+*.log
+
+# Large mass-spectrometry source files
+*.raw
+*.RAW
+*.mzML
+*.mzXML
+*.dia
+*.speclib
