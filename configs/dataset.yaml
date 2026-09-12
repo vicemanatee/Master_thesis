@@ -1,0 +1,24 @@
+# Reading choices only. Statistical feature selection stays in preprocessing.yaml.
+# null = all available entries; [] is an error, not shorthand for all.
+# columns selects matrix annotations or fields in a report/stats/library table.
+# Identity fields are always included. Matrix sample quantities are added separately.
+# feature_ids matches exact Protein.Group / Precursor.Id / Genes values (ROWS).
+# sample_ids matches Sxxxxxx IDs, not column positions; source order is retained.
+# Defaults preserve all rows/runs, including Pool. No correction of S000940.
+datasets:
+  proteome:
+    source: prepared_data
+    file_type: pg_matrix
+    columns: null
+    feature_ids: null
+    sample_ids: null
+    include_pool: true
+    chunksize: 100000
+  phosphoproteome:
+    source: prepared_data
+    file_type: pr_matrix
+    columns: null
+    feature_ids: null
+    sample_ids: null
+    include_pool: true
+    chunksize: 100000

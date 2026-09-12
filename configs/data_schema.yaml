@@ -1,0 +1,295 @@
+# Explicit assay-specific schemas for the observed DIA-NN 1.8.1 files.
+# Required fields exist in Key_col and raw. Optional fields exist only in raw.
+# Unknown columns fail validation instead of silently becoming model features.
+patterns:
+  sample_column: '(?i)(?:.*\.mzML(?:\.dia)?|S[0-9]{6})'
+  sample_id: '(?<![A-Za-z0-9])S[0-9]{6}(?![0-9])'
+  pool: '(?i)(?:^|[_-])pool(?:[_-]|\.|$)'
+schemas:
+  proteome:
+    pg_matrix:
+      layout: matrix
+      path_key: "protein group"
+      feature_id: "Protein.Group"
+      run_column: null
+      identity_columns: ["Protein.Group"]
+      required_columns:
+        - "Protein.Group"
+        - "Protein.Ids"
+        - "Protein.Names"
+        - "Genes"
+        - "First.Protein.Description"
+      optional_columns: []
+      string_columns: ["Protein.Group","Protein.Ids","Protein.Names","Genes","First.Protein.Description"]
+    gg_matrix:
+      layout: matrix
+      path_key: "gene group"
+      feature_id: "Genes"
+      run_column: null
+      identity_columns: ["Genes"]
+      required_columns:
+        - "Genes"
+      optional_columns: []
+      string_columns: ["Genes"]
+    pr_matrix:
+      layout: matrix
+      path_key: "precursor"
+      feature_id: "Precursor.Id"
+      run_column: null
+      identity_columns: ["Precursor.Id","Modified.Sequence","Precursor.Charge"]
+      required_columns:
+        - "Protein.Group"
+        - "Protein.Ids"
+        - "Protein.Names"
+        - "Genes"
+        - "First.Protein.Description"
+        - "Proteotypic"
+        - "Stripped.Sequence"
+        - "Modified.Sequence"
+        - "Precursor.Charge"
+        - "Precursor.Id"
+      optional_columns: []
+      string_columns: ["Protein.Group","Protein.Ids","Protein.Names","Genes","First.Protein.Description","Stripped.Sequence","Modified.Sequence","Precursor.Id"]
+    unique_genes_matrix:
+      layout: matrix
+      path_key: "unique genes"
+      feature_id: "Genes"
+      run_column: null
+      identity_columns: ["Genes"]
+      required_columns:
+        - "Genes"
+      optional_columns: []
+      string_columns: ["Genes"]
+    report:
+      layout: table
+      path_key: "report"
+      feature_id: "Precursor.Id"
+      run_column: "Run"
+      identity_columns: ["Precursor.Id","Run"]
+      required_columns:
+        - "Run"
+        - "Protein.Group"
+        - "Protein.Ids"
+        - "Protein.Names"
+        - "Genes"
+        - "First.Protein.Description"
+        - "Modified.Sequence"
+        - "Stripped.Sequence"
+        - "Precursor.Id"
+        - "Precursor.Charge"
+        - "Proteotypic"
+        - "Precursor.Quantity"
+        - "Precursor.Normalised"
+        - "Q.Value"
+        - "PEP"
+        - "Global.Q.Value"
+        - "Protein.Q.Value"
+        - "PG.Q.Value"
+        - "Global.PG.Q.Value"
+        - "GG.Q.Value"
+        - "Quantity.Quality"
+        - "Lib.Q.Value"
+        - "Lib.PG.Q.Value"
+      optional_columns: ["File.Name","PG.Quantity","PG.Normalised","PG.MaxLFQ","Genes.Quantity","Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","Translated.Q.Value","Precursor.Translated","Translated.Quality","Ms1.Translated","RT","RT.Start","RT.Stop","iRT","Predicted.RT","Predicted.iRT","Ms1.Profile.Corr","Ms1.Area","Evidence","Spectrum.Similarity","Averagine","Mass.Evidence","CScore","Decoy.Evidence","Decoy.CScore","Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations","MS2.Scan","IM","iIM","Predicted.IM","Predicted.iIM"]
+      string_columns: ["Run","Protein.Group","Protein.Ids","Protein.Names","Genes","First.Protein.Description","Modified.Sequence","Stripped.Sequence","Precursor.Id","File.Name","Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations"]
+    stats:
+      layout: table
+      path_key: "stats"
+      feature_id: null
+      run_column: "File.Name"
+      identity_columns: ["File.Name"]
+      required_columns:
+        - "File.Name"
+        - "Precursors.Identified"
+        - "Proteins.Identified"
+        - "Total.Quantity"
+        - "MS1.Signal"
+        - "MS2.Signal"
+        - "FWHM.Scans"
+        - "FWHM.RT"
+        - "Median.Mass.Acc.MS1"
+        - "Median.Mass.Acc.MS1.Corrected"
+        - "Median.Mass.Acc.MS2"
+        - "Median.Mass.Acc.MS2.Corrected"
+        - "MS2.Mass.Instability"
+        - "Normalisation.Instability"
+        - "Median.RT.Prediction.Acc"
+        - "Average.Peptide.Length"
+        - "Average.Peptide.Charge"
+        - "Average.Missed.Tryptic.Cleavages"
+      optional_columns: []
+      string_columns: ["File.Name"]
+    library:
+      layout: table
+      path_key: "library"
+      feature_id: "transition_group_id"
+      run_column: null
+      identity_columns: ["transition_group_id"]
+      required_columns:
+        - "transition_group_id"
+        - "PeptideSequence"
+        - "FullUniModPeptideName"
+        - "ModifiedPeptide"
+        - "PrecursorCharge"
+        - "ProteinGroup"
+        - "UniprotID"
+        - "ProteinName"
+        - "Genes"
+        - "Proteotypic"
+        - "decoy"
+        - "QValue"
+        - "PGQValue"
+        - "Ms1ProfileCorr"
+        - "LibraryIntensity"
+        - "ExcludeFromAssay"
+      optional_columns: ["FileName","PrecursorMz","ProductMz","Tr_recalibrated","IonMobility","transition_name","PeptideGroupLabel","NTerm","CTerm","FragmentType","FragmentCharge","FragmentSeriesNumber","FragmentLossType"]
+      string_columns: ["transition_group_id","PeptideSequence","FullUniModPeptideName","ModifiedPeptide","ProteinGroup","UniprotID","ProteinName","Genes","FileName","transition_name","PeptideGroupLabel","NTerm","CTerm","FragmentType","FragmentLossType"]
+  phosphoproteome:
+    pg_matrix:
+      layout: matrix
+      path_key: "protein group"
+      feature_id: "Protein.Group"
+      run_column: null
+      identity_columns: ["Protein.Group"]
+      required_columns:
+        - "Protein.Group"
+        - "Protein.Ids"
+        - "Protein.Names"
+        - "Genes"
+        - "First.Protein.Description"
+      optional_columns: []
+      string_columns: ["Protein.Group","Protein.Ids","Protein.Names","Genes","First.Protein.Description"]
+    gg_matrix:
+      layout: matrix
+      path_key: "gene group"
+      feature_id: "Genes"
+      run_column: null
+      identity_columns: ["Genes"]
+      required_columns:
+        - "Genes"
+      optional_columns: []
+      string_columns: ["Genes"]
+    pr_matrix:
+      layout: matrix
+      path_key: "precursor"
+      feature_id: "Precursor.Id"
+      run_column: null
+      identity_columns: ["Precursor.Id","Modified.Sequence","Precursor.Charge"]
+      required_columns:
+        - "Protein.Group"
+        - "Protein.Ids"
+        - "Protein.Names"
+        - "Genes"
+        - "First.Protein.Description"
+        - "Proteotypic"
+        - "Stripped.Sequence"
+        - "Modified.Sequence"
+        - "Precursor.Charge"
+        - "Precursor.Id"
+      optional_columns: []
+      string_columns: ["Protein.Group","Protein.Ids","Protein.Names","Genes","First.Protein.Description","Stripped.Sequence","Modified.Sequence","Precursor.Id"]
+    unique_genes_matrix:
+      layout: matrix
+      path_key: "unique genes"
+      feature_id: "Genes"
+      run_column: null
+      identity_columns: ["Genes"]
+      required_columns:
+        - "Genes"
+      optional_columns: []
+      string_columns: ["Genes"]
+    report:
+      layout: table
+      path_key: "report"
+      feature_id: "Precursor.Id"
+      run_column: "Run"
+      identity_columns: ["Precursor.Id","Run","Modified.Sequence"]
+      required_columns:
+        - "Run"
+        - "Protein.Group"
+        - "Protein.Ids"
+        - "Protein.Names"
+        - "Genes"
+        - "First.Protein.Description"
+        - "Modified.Sequence"
+        - "Stripped.Sequence"
+        - "Precursor.Id"
+        - "Precursor.Charge"
+        - "Proteotypic"
+        - "Precursor.Quantity"
+        - "Precursor.Normalised"
+        - "Q.Value"
+        - "PEP"
+        - "Global.Q.Value"
+        - "Protein.Q.Value"
+        - "PG.Q.Value"
+        - "Global.PG.Q.Value"
+        - "GG.Q.Value"
+        - "Quantity.Quality"
+        - "Lib.Q.Value"
+        - "Lib.PG.Q.Value"
+        - "PTM.Informative"
+        - "PTM.Specific"
+        - "PTM.Localising"
+        - "PTM.Q.Value"
+        - "PTM.Site.Confidence"
+        - "Lib.PTM.Site.Confidence"
+      optional_columns: ["File.Name","PG.Quantity","PG.Normalised","PG.MaxLFQ","Genes.Quantity","Genes.Normalised","Genes.MaxLFQ","Genes.MaxLFQ.Unique","Translated.Q.Value","Precursor.Translated","Translated.Quality","Ms1.Translated","RT","RT.Start","RT.Stop","iRT","Predicted.RT","Predicted.iRT","Ms1.Profile.Corr","Ms1.Area","Evidence","Spectrum.Similarity","Averagine","Mass.Evidence","CScore","Decoy.Evidence","Decoy.CScore","Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations","MS2.Scan","IM","iIM","Predicted.IM","Predicted.iIM"]
+      string_columns: ["Run","Protein.Group","Protein.Ids","Protein.Names","Genes","First.Protein.Description","Modified.Sequence","Stripped.Sequence","Precursor.Id","File.Name","Fragment.Quant.Raw","Fragment.Quant.Corrected","Fragment.Correlations"]
+    stats:
+      layout: table
+      path_key: "stats"
+      feature_id: null
+      run_column: "File.Name"
+      identity_columns: ["File.Name"]
+      required_columns:
+        - "File.Name"
+        - "Precursors.Identified"
+        - "Proteins.Identified"
+        - "Total.Quantity"
+        - "MS1.Signal"
+        - "MS2.Signal"
+        - "FWHM.Scans"
+        - "FWHM.RT"
+        - "Median.Mass.Acc.MS1"
+        - "Median.Mass.Acc.MS1.Corrected"
+        - "Median.Mass.Acc.MS2"
+        - "Median.Mass.Acc.MS2.Corrected"
+        - "MS2.Mass.Instability"
+        - "Normalisation.Instability"
+        - "Median.RT.Prediction.Acc"
+        - "Average.Peptide.Length"
+        - "Average.Peptide.Charge"
+        - "Average.Missed.Tryptic.Cleavages"
+      optional_columns: []
+      string_columns: ["File.Name"]
+    library:
+      layout: table
+      path_key: "library"
+      feature_id: "transition_group_id"
+      run_column: null
+      identity_columns: ["transition_group_id"]
+      required_columns:
+        - "transition_group_id"
+        - "PeptideSequence"
+        - "FullUniModPeptideName"
+        - "ModifiedPeptide"
+        - "PrecursorCharge"
+        - "ProteinGroup"
+        - "UniprotID"
+        - "ProteinName"
+        - "Genes"
+        - "Proteotypic"
+        - "decoy"
+        - "QValue"
+        - "PGQValue"
+        - "Ms1ProfileCorr"
+        - "LibraryIntensity"
+        - "ExcludeFromAssay"
+        - "PTM.Informative"
+        - "PTM.Specific"
+        - "PTM.Localising"
+        - "BestPTMQValue"
+        - "PTMSiteConfidence"
+      optional_columns: ["FileName","PrecursorMz","ProductMz","Tr_recalibrated","IonMobility","transition_name","PeptideGroupLabel","NTerm","CTerm","FragmentType","FragmentCharge","FragmentSeriesNumber","FragmentLossType"]
+      string_columns: ["transition_group_id","PeptideSequence","FullUniModPeptideName","ModifiedPeptide","ProteinGroup","UniprotID","ProteinName","Genes","FileName","transition_name","PeptideGroupLabel","NTerm","CTerm","FragmentType","FragmentLossType"]
