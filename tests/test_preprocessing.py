@@ -10,6 +10,8 @@ from preprocessing import (
     calculate_mad,
     filter_by_mad,
     filter_missing_values,
+    make_z_score_scaler,
+    z_score,
 )
 
 
@@ -104,3 +106,45 @@ def test_mad_filter_uses_training_selection_on_test_data() -> None:
 def test_mad_rejects_non_numeric_features() -> None:
     with pytest.raises(TypeError, match="numeric"):
         calculate_mad(pd.DataFrame({"label": ["a", "b"]}))
+
+
+def test_z_score_uses_standard_scaler_and_preserves_labels() -> None:
+    data = pd.DataFrame(
+        {
+            "variable": [1.0, 2.0, 3.0],
+            "constant": [5.0, 5.0, 5.0],
+        },
+        index=["P1", "P2", "P3"],
+    )
+
+    transformed = z_score(data)
+
+    assert transformed.index.tolist() == data.index.tolist()
+    assert transformed.columns.tolist() == data.columns.tolist()
+    np.testing.assert_allclose(transformed["variable"], [-1.22474487, 0.0, 1.22474487])
+    np.testing.assert_allclose(transformed["constant"], 0.0)
+
+
+def test_z_score_scaler_reuses_training_statistics() -> None:
+    train = pd.DataFrame({"feature": [0.0, 2.0]}, index=["P1", "P2"])
+    test = pd.DataFrame({"feature": [100.0]}, index=["P3"])
+
+    scaler = make_z_score_scaler().fit(train)
+    transformed = scaler.transform(test)
+
+    assert transformed.loc["P3", "feature"] == pytest.approx(99.0)
+
+
+def test_z_score_preserves_missing_values() -> None:
+    data = pd.DataFrame({"feature": [1.0, np.nan, 3.0]})
+
+    transformed = z_score(data)
+
+    np.testing.assert_allclose(
+        transformed["feature"].to_numpy(), [-1.0, np.nan, 1.0], equal_nan=True
+    )
+
+
+def test_z_score_rejects_non_numeric_features() -> None:
+    with pytest.raises(TypeError, match="numeric"):
+        z_score(pd.DataFrame({"label": ["a", "b"]}))
