@@ -12,6 +12,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from scipy.stats import median_abs_deviation
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from .config import load_preprocessing_config
@@ -62,14 +63,15 @@ def calculate_mad(
     if not np.isfinite(scale) or scale <= 0:
         raise ValueError("scale must be a positive finite number")
 
-    def column_mad(column: pd.Series) -> float:
-        observed = column.dropna().to_numpy(dtype=float)
-        if observed.size == 0:
-            return float("nan")
-        median = np.median(observed)
-        return float(scale * np.median(np.abs(observed - median)))
-
-    return data.apply(column_mad, axis=0).rename("MAD")
+    values = data.to_numpy(dtype=float, na_value=np.nan)
+    all_missing = np.isnan(values).all(axis=0)
+    scores = np.full(values.shape[1], np.nan, dtype=float)
+    if (~all_missing).any():
+        scores[~all_missing] = (
+            median_abs_deviation(values[:, ~all_missing], axis=0, nan_policy="omit")
+            * scale
+        )
+    return pd.Series(scores, index=data.columns, name="MAD")
 
 
 class MADFilter(TransformerMixin, BaseEstimator):

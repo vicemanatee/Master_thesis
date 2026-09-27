@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -46,6 +48,24 @@ def test_calculate_mad_ignores_missing_values() -> None:
 
     assert scores["constant"] == 0.0
     assert scores["variable"] == pytest.approx(2.0 * 1.4826)
+
+
+def test_calculate_mad_preserves_all_missing_and_nullable_columns() -> None:
+    data = pd.DataFrame(
+        {
+            "nullable": pd.Series([1.0, pd.NA, 5.0], dtype="Float64"),
+            "all_missing": pd.Series([pd.NA, pd.NA, pd.NA], dtype="Float64"),
+        }
+    )
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        scores = calculate_mad(data, scale=1.0)
+
+    assert scores.index.tolist() == ["nullable", "all_missing"]
+    assert scores.name == "MAD"
+    assert scores["nullable"] == 2.0
+    assert pd.isna(scores["all_missing"])
 
 
 def test_mad_filter_retains_features_above_quantile() -> None:
