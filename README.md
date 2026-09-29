@@ -42,7 +42,14 @@ the configured omics/path pairing remains the source of that information.
 From a Python session in the repository root:
 
 ```python
-from src.data import build_read_plan, get_feature_ids, load_from_plan, load_matrix
+from src.data import (
+    build_read_plan,
+    get_feature_ids,
+    load_from_plan,
+    load_matrix,
+    load_matrix_bundle,
+    save_matrix_bundle,
+)
 
 proteome_plan = build_read_plan("proteome")         # prepared_data / pg_matrix
 phospho_plan = build_read_plan("phosphoproteome")   # prepared_data / pr_matrix
@@ -57,6 +64,24 @@ X_proteome = proteome.X
 X_phospho = phospho.X
 # For an unchanged orientation instead: table = load_from_plan(proteome_plan)
 ```
+
+For repeated experiments, persist the validated, label-free run-by-feature
+matrix as a standard bundle instead of parsing the source TSV each time:
+
+```python
+save_matrix_bundle(proteome, "../../BC_Data/processed/proteome")
+prepared = load_matrix_bundle("../../BC_Data/processed/proteome")
+X = prepared.X
+```
+
+Each bundle contains `X.npy`, `sample_metadata.tsv`, `feature_metadata.tsv` and
+`manifest.yaml`. `X.npy` contains only numeric run-by-feature values and supports
+memory-mapped loading. The metadata files preserve exact row/column alignment;
+the manifest records source provenance, shape, dtype and checksums. Saving is an
+explicit one-time operation and refuses to replace an existing destination.
+Bundles contain no clinical labels and no statistical preprocessing. Missing
+values remain missing so imputation, feature selection and scaling can be fitted
+inside each cross-validation training fold.
 
 `load_matrix` is an explicit format conversion, returning `X` (runs x features),
 `feature_metadata`, `sample_metadata` and the resolved `plan`. Feature annotations

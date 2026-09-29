@@ -1,5 +1,6 @@
 """Three-layer readers for proteome and phosphoproteome DIA-NN tables."""
 
+from .bundle import MatrixBundle, load_matrix_bundle, save_matrix_bundle
 from .loader import (
     LoadedMatrix,
     get_columns,
@@ -15,6 +16,7 @@ from .selection import ReadPlan, build_read_plan
 __all__ = [
     "DataSchema",
     "LoadedMatrix",
+    "MatrixBundle",
     "ReadPlan",
     "build_read_plan",
     "get_columns",
@@ -24,5 +26,7 @@ __all__ = [
     "load_data",
     "load_from_plan",
     "load_matrix",
+    "load_matrix_bundle",
     "load_yaml",
+    "save_matrix_bundle",
 ]

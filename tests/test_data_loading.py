@@ -17,7 +17,9 @@ from data import (
     load_data,
     load_from_plan,
     load_matrix,
+    load_matrix_bundle,
     load_yaml,
+    save_matrix_bundle,
 )
 from data.loader import CONFIG_DIR
 from data.schema import get_schema_spec
@@ -131,6 +133,53 @@ def test_matrix_output_alignment_and_preserved_values(pg_path):
     assert result.sample_metadata.loc[RUN2, "sample_id"] == "S000940"
     assert result.sample_metadata.loc[POOL, "is_pool"]
     assert pd.isna(result.sample_metadata.loc[POOL, "sample_id"])
+
+
+def test_matrix_bundle_round_trip(tmp_path, pg_path):
+    loaded = load_matrix(build_read_plan("proteome", path=pg_path))
+    destination = tmp_path / "proteome_bundle"
+    assert save_matrix_bundle(loaded, destination) == destination.resolve()
+    assert {path.name for path in destination.iterdir()} == {
+        "X.npy",
+        "sample_metadata.tsv",
+        "feature_metadata.tsv",
+        "manifest.yaml",
+    }
+
+    bundle = load_matrix_bundle(destination)
+    pd.testing.assert_frame_equal(bundle.X, loaded.X)
+    assert bundle.sample_metadata.index.equals(loaded.sample_metadata.index)
+    assert bundle.sample_metadata["original_run"].tolist() == loaded.sample_metadata[
+        "original_run"
+    ].tolist()
+    assert pd.isna(bundle.sample_metadata.iloc[0]["sample_id"])
+    assert bundle.sample_metadata.iloc[1]["sample_id"] == "S000940"
+    assert bundle.sample_metadata["is_pool"].tolist() == [True, False, False]
+    assert bundle.feature_metadata.index.equals(loaded.feature_metadata.index)
+    assert bundle.feature_metadata.loc["P2", "Genes"] == "NA"
+    assert bundle.manifest["matrix"]["layout"] == "run_x_feature"
+    assert bundle.manifest["labels_included"] is False
+    assert bundle.manifest["preprocessing_applied"] is False
+
+
+def test_matrix_bundle_rejects_existing_destination(tmp_path, pg_path):
+    destination = tmp_path / "existing"
+    destination.mkdir()
+    loaded = load_matrix(build_read_plan("proteome", path=pg_path))
+    with pytest.raises(FileExistsError):
+        save_matrix_bundle(loaded, destination)
+
+
+def test_matrix_bundle_detects_file_changes(tmp_path, pg_path):
+    destination = tmp_path / "bundle"
+    save_matrix_bundle(load_matrix(build_read_plan("proteome", path=pg_path)), destination)
+    metadata_path = destination / "sample_metadata.tsv"
+    metadata_path.write_text(
+        metadata_path.read_text(encoding="utf-8") + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        load_matrix_bundle(destination)
 
 
 def test_schema_is_field_based_not_positional(pg_path):
