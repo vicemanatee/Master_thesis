@@ -1,201 +1,179 @@
+"""Load the DIA-NN matrices used by the classification experiments."""
+
 from __future__ import annotations
 
-import csv
-from collections import Counter
-from collections.abc import Iterable, Iterator, Mapping
+import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import pandas as pd
 import yaml
 
-if TYPE_CHECKING:
-    from .selection import ReadPlan
+CONFIG_PATH = Path(__file__).resolve().parents[2] / "configs" / "path.yaml"
 
-CONFIG_DIR = Path(__file__).resolve().parents[2] / "configs"
-
-
-def load_yaml(path: str | Path = CONFIG_DIR / "path.yaml") -> dict[str, Any]:
-    """Load a YAML mapping. Relative paths supplied by callers use their cwd."""
-    path = Path(path)
-    with path.open(encoding="utf-8") as stream:
-        try:
-            config = yaml.safe_load(stream)
-        except yaml.YAMLError as error:
-            raise ValueError(f"Invalid YAML in {path}: {error}") from error
-    if not isinstance(config, dict) or not config:
-        raise ValueError(f"Configuration must be a non-empty mapping: {path}")
-    return config
-
-
-def get_columns(path: str | Path) -> list[str]:
-    """Read the original header; reject duplicates before pandas renames them."""
-    path = Path(path)
-    with path.open(encoding="utf-8-sig", newline="") as stream:
-        columns = next(csv.reader(stream, delimiter="\t"), [])
-    if not columns or any(not column.strip() for column in columns):
-        raise ValueError(f"Empty file or blank column name: {path}")
-    duplicates = [name for name, count in Counter(columns).items() if count > 1]
-    if duplicates:
-        raise ValueError(f"Duplicate columns in {path}: {duplicates}")
-    return columns
-
-
-def load_data(
-    path: str | Path,
-    *,
-    columns: Iterable[str] | None = None,
-    dtype: Mapping[str, str] | None = None,
-    nrows: int | None = None,
-) -> pd.DataFrame:
-    """Load TSV fields without transposition, filtering or statistical processing.
-
-    Requested column order is preserved. Empty cells are missing; literal text
-    such as the gene identifier 'NA' is not automatically changed to missing.
-    Use a ReadPlan for schema-aware types and numeric missing-value tokens.
-    """
-    available = get_columns(path)
-    selected = list(columns) if columns is not None else available
-    if not selected or len(selected) != len(set(selected)):
-        raise ValueError("columns must be non-empty and contain no duplicates")
-    missing = set(selected) - set(available)
-    if missing:
-        raise ValueError(f"Columns not found in {path}: {sorted(missing)}")
-    data = pd.read_csv(
-        path,
-        sep="\t",
-        usecols=selected,
-        dtype=dtype,
-        nrows=nrows,
-        keep_default_na=False,
-        na_values=[""],
-        encoding="utf-8-sig",
-    )
-    return data.loc[:, selected]
-
-
-def iter_from_plan(plan: ReadPlan) -> Iterator[pd.DataFrame]:
-    """Read selected rows in bounded chunks, in source order.
-
-    The iterator must be exhausted to validate that every requested feature
-    and sample occurs in the selected records. No PTM/QC thresholds are applied.
-    """
-    from .schema import sample_identity
-
-    schema = plan.schema
-    if tuple(get_columns(schema.path)) != schema.columns:
-        raise ValueError("File header changed after planning; rebuild the ReadPlan")
-    dtypes = {c: "string" for c in schema.string_columns if c in plan.columns}
-    dtypes.update({c: "float64" for c in plan.sample_columns})
-    missing_values = {
-        c: ["", "NA", "NaN", "nan", "N/A"] if c in plan.sample_columns else [""]
-        for c in plan.columns
-    }
-    seen_features: set[str] = set()
-    seen_samples: set[str] = set()
-    with pd.read_csv(
-        schema.path,
-        sep="\t",
-        usecols=list(plan.columns),
-        dtype=dtypes,
-        chunksize=plan.chunksize,
-        keep_default_na=False,
-        na_values=missing_values,
-        encoding="utf-8-sig",
-    ) as reader:
-        for chunk in reader:
-            if schema.run_column is not None:
-                run = chunk[schema.run_column]
-                # Resolve each distinct run once, not once per precursor row.
-                identities = {
-                    value: sample_identity(str(value), schema)
-                    for value in run.dropna().unique()
-                }
-                if not plan.include_pool:
-                    pools = run.map({k: v[1] for k, v in identities.items()})
-                    chunk = chunk.loc[~pools.fillna(False).astype(bool)]
-                if plan.sample_ids is not None:
-                    ids = chunk[schema.run_column].map(
-                        {k: v[0] for k, v in identities.items()}
-                    )
-                    chunk = chunk.loc[ids.isin(plan.sample_ids)]
-            if plan.feature_ids is not None:
-                chunk = chunk.loc[chunk[schema.feature_id].isin(plan.feature_ids)]
-                seen_features.update(chunk[schema.feature_id].dropna())
-            if plan.sample_ids is not None and schema.run_column is not None:
-                seen_samples.update(
-                    sample_identity(str(value), schema)[0]
-                    for value in chunk[schema.run_column].dropna().unique()
-                )
-            if not chunk.empty:
-                yield chunk.loc[:, list(plan.columns)]
-    if plan.feature_ids is not None:
-        missing = set(plan.feature_ids) - seen_features
-        if missing:
-            raise ValueError(
-                f"Feature IDs absent from selected data: {sorted(missing)}"
-            )
-    if plan.sample_ids is not None and schema.run_column is not None:
-        missing = set(plan.sample_ids) - seen_samples
-        if missing:
-            raise ValueError(f"Sample IDs absent from selected data: {sorted(missing)}")
-
-
-def load_from_plan(plan: ReadPlan) -> pd.DataFrame:
-    """Materialize a plan as a source-oriented table; large reports need RAM.
-
-    Prefer iter_from_plan for report/library workflows that can consume chunks.
-    """
-    chunks = list(iter_from_plan(plan))
-    if not chunks:
-        raise ValueError(f"No records selected from {plan.schema.path}")
-    return pd.concat(chunks, ignore_index=True)
+_MATRIX_SPECS = {
+    "proteome": {
+        "feature_id": "Protein.Group",
+        "annotations": (
+            "Protein.Group",
+            "Protein.Ids",
+            "Protein.Names",
+            "Genes",
+            "First.Protein.Description",
+        ),
+    },
+    "phosphoproteome": {
+        "feature_id": "Precursor.Id",
+        "annotations": (
+            "Protein.Group",
+            "Protein.Ids",
+            "Protein.Names",
+            "Genes",
+            "First.Protein.Description",
+            "Proteotypic",
+            "Stripped.Sequence",
+            "Modified.Sequence",
+            "Precursor.Charge",
+            "Precursor.Id",
+        ),
+    },
+}
 
 
 @dataclass
 class LoadedMatrix:
-    """Numeric run-by-feature matrix with aligned, separate annotations."""
+    """A samples-by-features matrix with aligned annotations."""
 
     X: pd.DataFrame
     feature_metadata: pd.DataFrame
     sample_metadata: pd.DataFrame
-    plan: ReadPlan
+    omics: str
+    source_path: Path
 
 
-def load_matrix(plan: ReadPlan) -> LoadedMatrix:
-    """Explicitly convert a wide DIA-NN matrix into runs x features.
+def _default_path(omics: str, config_path: str | Path | None) -> Path:
+    config_path = Path(config_path or CONFIG_PATH).resolve()
+    with config_path.open(encoding="utf-8") as stream:
+        config = yaml.safe_load(stream)
+    try:
+        value = config["matrices"][omics]
+    except (KeyError, TypeError) as error:
+        raise ValueError(f"No matrix path configured for {omics}") from error
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"Invalid matrix path configured for {omics}")
+    path = Path(value)
+    return path if path.is_absolute() else (config_path.parent / path).resolve()
 
-    Original run labels remain the index. Sample IDs are metadata, so repeated
-    injections are never silently merged. No imputation or sample-ID correction.
+
+def _sample_identity(run: str) -> tuple[str | None, bool]:
+    basename = re.split(r"[\\/]", run)[-1]
+    matches = re.findall(r"S\d{6}", basename)
+    if len(matches) > 1:
+        raise ValueError(f"Ambiguous sample ID in run name: {run}")
+    is_pool = re.search(r"(?i)(?:^|[-_])pool(?:[-_]|$)", basename) is not None
+    return (matches[0] if matches else None), is_pool
+
+
+def load_matrix(
+    omics: str,
+    path: str | Path | None = None,
+    *,
+    include_pool: bool = False,
+    config_path: str | Path | None = None,
+) -> LoadedMatrix:
+    """Load a proteome PG matrix or phosphoproteome precursor matrix.
+
+    Both formats are returned as samples x features. Phosphopeptide charge
+    states remain separate features; this reader does not aggregate them.
     """
-    from .schema import sample_identity
+    if omics not in _MATRIX_SPECS:
+        raise ValueError(f"omics must be one of {sorted(_MATRIX_SPECS)}")
+    if not isinstance(include_pool, bool):
+        raise TypeError("include_pool must be a boolean")
 
-    schema = plan.schema
-    if schema.layout != "matrix":
-        raise ValueError(f"{schema.file_type} is not a quantitative matrix")
-    data = load_from_plan(plan)
-    ids = data[schema.feature_id]
+    source_path = (
+        Path(path).resolve() if path is not None else _default_path(omics, config_path)
+    )
+    spec = _MATRIX_SPECS[omics]
+    header = pd.read_csv(source_path, sep="\t", nrows=0, encoding="utf-8-sig").columns
+    if not header.is_unique:
+        raise ValueError(f"Duplicate columns in {source_path}")
+
+    annotations = list(spec["annotations"])
+    missing = set(annotations) - set(header)
+    if missing:
+        raise ValueError(f"Missing {omics} annotation columns: {sorted(missing)}")
+    sample_columns = [column for column in header if column not in annotations]
+    if not sample_columns:
+        raise ValueError(f"No sample columns found in {source_path}")
+
+    data = pd.read_csv(
+        source_path,
+        sep="\t",
+        dtype={
+            column: "string" for column in annotations if column != "Precursor.Charge"
+        },
+        keep_default_na=False,
+        na_values={
+            column: ["", "NA", "NaN", "nan", "N/A"] for column in sample_columns
+        },
+        encoding="utf-8-sig",
+    )
+    feature_id = spec["feature_id"]
+    ids = data[feature_id]
     if ids.isna().any() or ids.str.strip().eq("").any() or ids.duplicated().any():
-        raise ValueError(
-            f"Matrix feature IDs must be non-empty and unique: {schema.feature_id}"
-        )
-    features = pd.Index(ids, name=schema.feature_id)
-    X = data.loc[:, list(plan.sample_columns)].T.copy()
-    X.columns = features
-    X.index.name = "run_id"
-    if X.isin([float("inf"), float("-inf")]).any().any():
+        raise ValueError(f"{feature_id} values must be non-empty and unique")
+
+    quantities = data.loc[:, sample_columns].apply(pd.to_numeric, errors="raise")
+    if np.isinf(quantities.to_numpy(dtype=float, na_value=np.nan)).any():
         raise ValueError("Matrix quantities contain infinite values")
-    metadata_columns = [c for c in plan.columns if c not in plan.sample_columns]
-    feature_metadata = data.loc[:, metadata_columns].copy()
+
+    identities = [_sample_identity(run) for run in sample_columns]
+    keep = [include_pool or not identity[1] for identity in identities]
+    selected_runs = [run for run, selected in zip(sample_columns, keep) if selected]
+    selected_identities = [
+        identity for identity, selected in zip(identities, keep) if selected
+    ]
+    if not selected_runs:
+        raise ValueError("No sample runs remain after Pool exclusion")
+
+    features = pd.Index(ids, name=feature_id)
+    X = quantities.loc[:, selected_runs].T
+    X.index.name = "run_id"
+    X.columns = features
+
+    feature_metadata = data.loc[:, annotations].copy()
     feature_metadata.index = features
-    identities = [sample_identity(run, schema) for run in X.index]
     sample_metadata = pd.DataFrame(
         {
-            "original_run": list(X.index),
-            "sample_id": [identity[0] for identity in identities],
-            "is_pool": [identity[1] for identity in identities],
+            "sample_id": [identity[0] for identity in selected_identities],
+            "is_pool": [identity[1] for identity in selected_identities],
         },
         index=X.index.copy(),
     )
-    return LoadedMatrix(X, feature_metadata, sample_metadata, plan)
+    return LoadedMatrix(X, feature_metadata, sample_metadata, omics, source_path)
+
+
+def load_proteome_matrix(
+    path: str | Path | None = None,
+    *,
+    include_pool: bool = False,
+    config_path: str | Path | None = None,
+) -> LoadedMatrix:
+    """Load the protein-group matrix used by the proteome benchmark."""
+    return load_matrix(
+        "proteome", path, include_pool=include_pool, config_path=config_path
+    )
+
+
+def load_phosphoproteome_matrix(
+    path: str | Path | None = None,
+    *,
+    include_pool: bool = False,
+    config_path: str | Path | None = None,
+) -> LoadedMatrix:
+    """Load precursors while preserving modification and charge metadata."""
+    return load_matrix(
+        "phosphoproteome", path, include_pool=include_pool, config_path=config_path
+    )
