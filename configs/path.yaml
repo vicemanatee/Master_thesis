@@ -1,4 +1,6 @@
 # Matrix inputs used by the classification project. Paths are relative to this file.
 matrices:
-  proteome: ../../../BC_Data/Key_col/proteome/230814_report.pg_matrix.tsv
+  proteome: ../../../BC_Data/processed/proteome_rollup/cycloess_Rollup_Genes.tsv
+  proteome_sample_metadata: ../../../BC_Data/processed/proteome_rollup/sample_metadata.tsv
+  proteome_raw: ../../../BC_Data/raw/diann_search_results_proteomics/230814_report.pg_matrix.tsv
   phosphoproteome: ../../../BC_Data/Key_col/phosphoproteome/230815_report.pr_matrix.tsv
