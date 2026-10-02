@@ -4,3 +4,7 @@ matrices:
   proteome_sample_metadata: ../../../BC_Data/processed/proteome_rollup/sample_metadata.tsv
   proteome_raw: ../../../BC_Data/raw/diann_search_results_proteomics/230814_report.pg_matrix.tsv
   phosphoproteome: ../../../BC_Data/Key_col/phosphoproteome/230815_report.pr_matrix.tsv
+
+clinical:
+  path: ../../../BC_Data/raw/SCANB_clinical_supplementary_table_1.xlsx
+  sheet_name: SCANB.9206

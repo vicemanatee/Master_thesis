@@ -107,3 +107,75 @@ cohort. CV-local filtering, imputation and scaling do not undo that prior use of
 all samples. Record this normalization scope when reporting baseline CV results;
 strict evaluation on new patients requires separately reviewing which upstream
 normalization/rollup parameters must be learned from training data.
+
+## Proteome LN benchmark
+
+Run from `Code/Master_Thesis`:
+
+```bash
+uv run python -m src.benchmark.proteome_benchmark
+# Compare the DIA-NN PG input using the same patient partition:
+uv run python -m src.benchmark.proteome_benchmark --input-format diann
+```
+
+`configs/proteome_benchmark.yaml` owns the fixed model parameters, preprocessing
+thresholds, random seed and CV settings. `configs/path.yaml` owns matrix and
+clinical file paths; its relative paths resolve against that YAML file. Optional
+arguments: `--config`, `--paths`, `--input-format`, `--output-dir`. Each run creates
+a new timestamped folder under `results/proteome_benchmark`; nonempty output
+folders are never overwritten.
+
+The default input is Rollup. Clinical labels are read once from `SCANB.9206` of
+the public supplementary workbook. `data.clinical.load_clinical_labels` verifies
+that repeated GEX records have identical Patient/LN fields before deduplication.
+`align_clinical_labels` applies the explicit `S000940 -> S000941` correction and
+aligns by sample ID in run order. Missing labels, conflicts and contradictory
+`LN`/`LN.spec` values are errors. Clinical fields remain separate from X.
+`N0 -> 0`, `1to3/4toX -> 1`. Pool is excluded; all labeled biological samples
+are retained, including Group2. The five extra sample exclusions from some of
+the author's downstream analyses are not applied in this baseline. DIA-NN input
+additionally uses the author's pure-contaminant removal rule.
+
+The current cohort has 182 samples from 180 Patient IDs, with 94 LN-negative
+and 88 LN-positive samples after the ID correction. Both classifiers share the
+same shuffled `StratifiedGroupKFold` splits, stratifying LN while keeping each
+Patient in a single held-out fold. Samples are sorted by corrected ID before
+splitting so the two input formats use the same partition. Five-fold CV leaves
+approximately 20% out per fold; there is no additional 70/30 split, independent
+test set or hyperparameter search. Metrics count samples, not unique patients.
+
+Each training fold fits a sklearn Pipeline:
+
+```text
+declared scale -> log2 (Rollup passes through)
+ -> missing-rate feature filter (default 0% missing in training)
+ -> MAD above the 80th percentile (~top 20%)
+ -> sklearn median imputation
+ -> sklearn StandardScaler (SVM only)
+ -> sklearn SVC / RandomForestClassifier
+```
+
+Validation reuses the fitted feature lists, medians and scaling. Imputation
+remains necessary because a protein complete in training may be missing in the
+held-out fold. MAD and missing-rate implementations reuse existing project
+transformers; MAD uses SciPy, log2 uses NumPy. CV, classifiers, imputation,
+scaling and metrics use scikit-learn. RF uses bootstrap internally; this is not
+bootstrap resampling for estimating uncertainty. SVM uses a linear kernel;
+RF uses 500 trees and `min_samples_leaf=2`. Parameters are fixed before evaluation;
+selecting parameters from these scores would require separate nested CV.
+
+Saved outputs:
+
+- `summary.csv`: held-out ROC-AUC, average precision, balanced accuracy, accuracy,
+  F1, sensitivity and specificity, averaged across folds with sample standard
+  deviation. Fold standard deviation is not a confidence interval.
+- `fold_metrics.csv`: train/held-out scores, sample/patient counts, retained
+  feature counts, fit times and held-out confusion matrices.
+- `predictions.csv`: one held-out prediction per sample per classifier; SVM
+  scores are decision margins, RF scores are LN-positive probabilities.
+- `fold_assignments.csv`: run/sample/Patient identities and shared held-out folds.
+- `selected_features.csv`: selected protein IDs and training MAD by model/fold.
+- `run.json`: resolved configuration, sources, versions, scale and upstream
+  normalization scope. The current Rollup uses full-cohort CycLoess/RRollup;
+  fold-local downstream preprocessing does not make that upstream processing
+  independent of held-out samples. DIA-NN also remains a fixed upstream output.

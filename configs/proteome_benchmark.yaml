@@ -1,0 +1,35 @@
+# Fixed-parameter baseline; choosing parameters from held-out scores is tuning.
+input_format: rollup  # rollup or diann
+random_state: 42
+cv:
+  n_splits: 5
+  shuffle: true
+  n_jobs: 1  # parallelism is inside RF
+
+cohort:
+  sample_id_corrections:
+    S000940: S000941
+  # All labeled biological samples, including Group2, are retained.
+  # Pure-contaminant rule from the author's DIA-NN cleanup.
+  diann_contaminant_pattern: '^Cont_[A-Za-z0-9]{6}(?!;)'
+
+preprocessing:
+  max_missing_fraction: 0.0  # no missing observations in TRAINING samples
+  mad_quantile: 0.80  # approximately top 20%, ties at threshold excluded
+  mad_scale: 1.4826
+  imputer_strategy: median  # held-out samples may still have missing values
+
+models:
+  svm:
+    kernel: linear
+    C: 1.0
+    class_weight: balanced
+    # SVC decision_function used for ROC-AUC and AP; no probability calibration.
+  random_forest:
+    n_estimators: 500
+    max_depth: null
+    min_samples_leaf: 2
+    max_features: sqrt
+    class_weight: balanced
+    bootstrap: true
+    n_jobs: -1
