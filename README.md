@@ -72,9 +72,12 @@ interface:
 ```python
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from src.preprocessing import MADFilter, MissingValueFilter, make_z_score_scaler
+from src.preprocessing import (
+    Log2Transformer, MADFilter, MissingValueFilter, make_z_score_scaler,
+)
 
 preprocessing = Pipeline([
+    ("log2", Log2Transformer(input_scale=proteome.scale)),
     ("missing", MissingValueFilter(max_missing_fraction=0.30)),
     ("mad", MADFilter(quantile=0.75)),
     ("impute", SimpleImputer(strategy="median").set_output(transform="pandas")),
@@ -84,6 +87,14 @@ preprocessing = Pipeline([
 X_train_processed = preprocessing.fit_transform(X_train)
 X_test_processed = preprocessing.transform(X_test)
 ```
+
+Always pass the loaded input's `scale` to the first step (use `raw.scale` or
+`phosphoproteome.scale` for those inputs). Linear abundances are converted to
+log2; the rollup's existing log2 values are preserved, including negative values.
+Linear zeros become missing values before missing-rate filtering; negative linear
+values raise an error. No pseudocount is added. Readers retain the original scale
+and values; the pipeline output has subsequently been filtered, imputed and
+standardized, so its final scale is z-score rather than log2.
 
 Rows are observations and columns are omics features. Put preprocessing and the
 classifier inside the cross-validation pipeline so every fold learns filtering
