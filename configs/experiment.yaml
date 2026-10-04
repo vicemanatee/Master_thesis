@@ -1,0 +1,10 @@
+# References and run combinations only. Paths resolve relative to this file.
+data_config: data.yaml
+preprocessing_config: preprocessing.yaml
+benchmark_config: benchmark.yaml
+dataset: proteome_ln
+
+runs:
+  - name: pca_svm
+    preprocessing: with_pca
+    model: svm

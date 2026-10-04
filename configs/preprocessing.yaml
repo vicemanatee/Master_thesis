@@ -1,0 +1,31 @@
+# Step parameters are defined once. Profiles override only what differs.
+# Scientific order is fixed: log2 -> missing -> MAD -> impute -> z-score -> PCA.
+steps:
+  log2:
+    enabled: true  # required harmonization; declared log2 inputs pass through
+  missing:
+    enabled: true
+    max_missing_fraction: 0.0  # measured only on training samples
+  mad:
+    enabled: true
+    quantile: 0.8  # training MAD quantile; retain features strictly above it
+    scale: 1.4826
+  impute:
+    enabled: true
+    strategy: median
+  z_score:
+    enabled: true
+  pca:
+    enabled: false
+    n_components: 10  # must fit every training fold's dimensions
+    svd_solver: full
+    whiten: false
+
+profiles:
+  standard: {}
+  unscaled:
+    z_score:
+      enabled: false
+  with_pca:
+    pca:
+      enabled: true

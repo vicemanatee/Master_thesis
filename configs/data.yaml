@@ -1,0 +1,13 @@
+# Data identity/cohort rules only. No learned preprocessing or model settings.
+datasets:
+  proteome_ln:
+    omics: proteome
+    input_format: rollup  # rollup or diann
+    paths_config: path.yaml
+    target: LN
+    group_column: Patient
+    sample_id_corrections:
+      S000940: S000941
+    # All labeled biological samples, including Group2, are retained.
+    # Fixed author annotation rule for pure DIA-NN contaminants; null disables it.
+    diann_contaminant_pattern: '^Cont_[A-Za-z0-9]{6}(?!;)'

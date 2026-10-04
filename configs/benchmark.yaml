@@ -1,0 +1,44 @@
+# Evaluation and standalone classifiers only; no data/preprocessing rules.
+# Parameters are fixed; choosing them using held-out scores would be tuning.
+random_state: 42
+cv:
+  n_splits: 5
+  shuffle: true
+  n_jobs: 1  # parallelism is inside RF
+scoring:
+  - roc_auc
+  - average_precision
+  - balanced_accuracy
+  - accuracy
+  - f1
+  - sensitivity
+  - specificity
+output_root: ../results/proteome_benchmark
+
+models:
+  svm:
+    type: svm
+    params:
+      kernel: linear
+      C: 0.001
+      class_weight: balanced
+
+  random_forest:
+    type: random_forest
+    params:
+      n_estimators: 500
+      max_depth: null
+      min_samples_leaf: 5
+      max_features: sqrt
+      class_weight: balanced
+      bootstrap: true
+      n_jobs: -1
+
+  logistic_l2:
+    type: logistic_regression
+    params:
+      l1_ratio: 0.0  # pure L2 in sklearn >=1.8; penalty='l2' is deprecated
+      C: 0.1
+      solver: lbfgs
+      max_iter: 2000
+      class_weight: balanced
