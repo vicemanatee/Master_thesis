@@ -1,3 +1,0 @@
-# Compatibility entry for the previous config path. Component parameters now
-# live in data.yaml, preprocessing.yaml and benchmark.yaml.
-experiment_config: experiment.yaml

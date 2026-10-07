@@ -5,7 +5,7 @@ steps:
     enabled: true  # required harmonization; declared log2 inputs pass through
   missing:
     enabled: true
-    max_missing_fraction: 0.0  # measured only on training samples
+    max_missing_fraction: 0.3  # measured only on training samples
   mad:
     enabled: true
     quantile: 0.8  # training MAD quantile; retain features strictly above it
@@ -17,7 +17,7 @@ steps:
     enabled: true
   pca:
     enabled: false
-    n_components: 10  # must fit every training fold's dimensions
+    n_components: 80  # must fit every training fold's dimensions
     svd_solver: full
     whiten: false
 
