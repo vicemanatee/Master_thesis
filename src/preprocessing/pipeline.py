@@ -7,12 +7,12 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 
 from .log2 import Log2Transformer
 from .mad_filter import MADFilter
 from .missing_value_filter import MissingValueFilter
+from .nan_preprocessing import make_nan_preprocessor
 from .pca import make_pca
 from .z_score import make_z_score_scaler
 
@@ -64,9 +64,7 @@ def build_preprocessor(
         "log2": lambda **kwargs: Log2Transformer(input_scale=input_scale, **kwargs),
         "missing": MissingValueFilter,
         "mad": MADFilter,
-        "impute": lambda **kwargs: SimpleImputer(**kwargs).set_output(
-            transform="pandas"
-        ),
+        "impute": make_nan_preprocessor,
         "z_score": lambda **kwargs: make_z_score_scaler(**kwargs),
         "pca": lambda **kwargs: make_pca(random_state=random_state, **kwargs),
     }

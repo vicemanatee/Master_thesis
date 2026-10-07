@@ -12,7 +12,7 @@ steps:
     scale: 1.4826
   impute:
     enabled: true
-    strategy: median
+    strategy: median  # use low_abundance for training-derived low log2 values
   z_score:
     enabled: true
   pca:
@@ -23,6 +23,11 @@ steps:
 
 profiles:
   standard: {}
+  low_abundance:
+    impute:
+      strategy: low_abundance
+      quantile: 0.01
+      offset: 1.0  # training feature log2 quantile minus 1 (half in linear scale)
   unscaled:
     z_score:
       enabled: false

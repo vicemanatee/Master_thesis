@@ -70,12 +70,12 @@ The reusable preprocessing steps follow the scikit-learn `fit`/`transform`
 interface:
 
 ```python
-from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from src.preprocessing import (
     Log2Transformer,
     MADFilter,
     MissingValueFilter,
+    make_nan_preprocessor,
     make_z_score_scaler,
 )
 
@@ -84,7 +84,7 @@ preprocessing = Pipeline(
         ("log2", Log2Transformer(input_scale=proteome.scale)),
         ("missing", MissingValueFilter(max_missing_fraction=0.30)),
         ("mad", MADFilter(quantile=0.75)),
-        ("impute", SimpleImputer(strategy="median").set_output(transform="pandas")),
+        ("impute", make_nan_preprocessor(strategy="median")),
         ("z_score", make_z_score_scaler()),
     ]
 )
@@ -92,6 +92,25 @@ preprocessing = Pipeline(
 X_train_processed = preprocessing.fit_transform(X_train)
 X_test_processed = preprocessing.transform(X_test)
 ```
+
+To select low-abundance imputation when assembling a Pipeline, use:
+
+```python
+("impute", make_nan_preprocessor(strategy="low_abundance", quantile=0.01, offset=1.0))
+```
+
+This method fills missing values with **each feature's training log2 quantile
+minus the offset**. An offset of 1 halves the corresponding linear abundance.
+Validation/test data reuse the training fill values; observed values remain
+unchanged. All-missing training features must be removed upstream. Missingness
+filtering and MAD still run before imputation.
+
+The `low_abundance` profile in `configs/preprocessing.yaml` selects this method;
+set a run's `preprocessing: low_abundance` to use it. The base missingness filter
+remains enabled with `max_missing_fraction: 0.0`, so any feature missing in
+training is removed; imputation then handles missing values in validation/test.
+To retain partly observed training features, explicitly increase that threshold
+in the base settings or the profile (for example, to 0.30).
 
 Always pass the loaded input's `scale` to the first step (use `raw.scale` or
 `phosphoproteome.scale` for those inputs). Linear abundances are converted to

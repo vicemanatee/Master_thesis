@@ -3,6 +3,7 @@
 from .log2 import Log2Transformer, to_log2
 from .mad_filter import MADFilter, calculate_mad, filter_by_mad
 from .missing_value_filter import MissingValueFilter, filter_missing_values
+from .nan_preprocessing import LowAbundanceImputer, make_nan_preprocessor
 from .pca import make_pca
 from .pipeline import (
     build_preprocessor,
@@ -13,6 +14,7 @@ from .z_score import make_z_score_scaler, z_score
 
 __all__ = [
     "Log2Transformer",
+    "LowAbundanceImputer",
     "MADFilter",
     "MissingValueFilter",
     "build_preprocessor",
@@ -20,6 +22,7 @@ __all__ = [
     "filter_by_mad",
     "filter_missing_values",
     "inspect_preprocessor",
+    "make_nan_preprocessor",
     "make_pca",
     "make_z_score_scaler",
     "resolve_preprocessing_profile",
