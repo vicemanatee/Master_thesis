@@ -25,7 +25,12 @@ Both readers return `LoadedMatrix` with:
 - `omics`, `source_path`, `scale` and `processing_stage`: the input identity and scale;
 - `sample_metadata_path`: the mapping file for rollup input.
 
-The proteome uses `Protein` features from
+The loader defaults to DIA-NN for both omics. The benchmark still explicitly
+selects rollup in `configs/data.yaml`, independently of the loader default.
+Use `load_proteome_rollup()` or `load_matrix("proteome", input_format="rollup")`
+to read rollup input.
+
+Rollup input uses `Protein` features from
 `BC_Data/processed/proteome_rollup/cycloess_Rollup_Genes.tsv`. This key comes from
 sorted `Protein.Ids` and differs from DIA-NN `Protein.Group`. `pep_count` and
 `rollup_score` remain feature metadata, with numeric types. Abundances are already
@@ -43,19 +48,23 @@ For source inspection, reproducibility or processing-method comparisons, read th
 original DIA-NN PG matrix explicitly:
 
 ```python
-from src.data import load_matrix, load_raw_proteome_matrix
+from src.data import load_diann_matrix
 
-raw = load_raw_proteome_matrix()  # BC_Data/raw/.../230814_report.pg_matrix.tsv
+raw = load_diann_matrix("proteome")  # BC_Data/raw/.../230814_report.pg_matrix.tsv
 # Equivalent: load_matrix("proteome", input_format="diann")
 ```
 
 This raw entry point uses `Protein.Group`, returns linear quantities and extracts
-uncorrected sample IDs from run names. `load_matrix("proteome")` defaults to rollup;
+uncorrected sample IDs from run names. `load_matrix("proteome")` defaults to DIA-NN;
 passing a custom path never implicitly changes the input format. The
 phosphoproteome uses `Precursor.Id` features from `pr_matrix` and retains
 `Modified.Sequence` and `Precursor.Charge`. Charge states are not aggregated by
 the reader. Default input paths are stored in `configs/path.yaml`; either reader
 also accepts a direct `path` argument.
+
+`load_matrix` selects the input format and delegates to `load_diann_matrix` or
+`load_proteome_rollup`. The DIA-NN reader can also be called independently for
+either omics.
 
 Pool runs are excluded by default. Set `include_pool=True` only when Pool data
 are intentionally needed. The reader preserves missing quantities and does not

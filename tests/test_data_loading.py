@@ -1,14 +1,16 @@
 import csv
+from functools import partial
 from io import StringIO
 
 import pandas as pd
 import pytest
 
 from data import (
+    load_diann_matrix,
     load_matrix,
     load_phosphoproteome_matrix,
     load_proteome_matrix,
-    load_raw_proteome_matrix,
+    load_proteome_rollup,
 )
 
 RUN = r"D:\raw\230502_S000001.mzML.dia"
@@ -39,7 +41,12 @@ def write_tsv(path, columns, rows):
     return path
 
 
-def test_load_proteome_matrix_returns_aligned_samples_by_features(tmp_path):
+@pytest.mark.parametrize(
+    "reader",
+    [load_proteome_matrix, partial(load_diann_matrix, "proteome")],
+    ids=["wrapper", "diann"],
+)
+def test_load_proteome_matrix_returns_aligned_samples_by_features(tmp_path, reader):
     path = write_tsv(
         tmp_path / "pg.tsv",
         [*PROTEOME_ANNOTATIONS, POOL, RUN],
@@ -49,7 +56,7 @@ def test_load_proteome_matrix_returns_aligned_samples_by_features(tmp_path):
         ],
     )
 
-    loaded = load_raw_proteome_matrix(path)
+    loaded = reader(path)
 
     assert loaded.X.shape == (1, 2)
     assert loaded.X.index.tolist() == [RUN]
@@ -61,12 +68,17 @@ def test_load_proteome_matrix_returns_aligned_samples_by_features(tmp_path):
     assert loaded.feature_metadata.loc["P2", "Genes"] == "NA"
     assert loaded.feature_metadata.index.equals(loaded.X.columns)
 
-    with_pool = load_raw_proteome_matrix(path, include_pool=True)
+    with_pool = reader(path, include_pool=True)
     assert with_pool.X.index.tolist() == [POOL, RUN]
     assert with_pool.sample_metadata.loc[POOL, "is_pool"]
 
 
-def test_phosphoproteome_uses_same_interface_and_preserves_charge(tmp_path):
+@pytest.mark.parametrize(
+    "reader",
+    [load_phosphoproteome_matrix, partial(load_diann_matrix, "phosphoproteome")],
+    ids=["wrapper", "diann"],
+)
+def test_phosphoproteome_uses_same_interface_and_preserves_charge(tmp_path, reader):
     rows = []
     for charge in (2, 3):
         values = {
@@ -84,7 +96,7 @@ def test_phosphoproteome_uses_same_interface_and_preserves_charge(tmp_path):
         rows.append([values[column] for column in PHOSPHO_ANNOTATIONS] + [10])
     path = write_tsv(tmp_path / "pr.tsv", [*PHOSPHO_ANNOTATIONS, RUN], rows)
 
-    loaded = load_phosphoproteome_matrix(path)
+    loaded = reader(path)
 
     assert loaded.X.shape == (1, 2)
     assert loaded.omics == "phosphoproteome"
@@ -103,7 +115,7 @@ def test_duplicate_or_blank_feature_ids_raise(tmp_path, feature_id):
         ],
     )
     with pytest.raises(ValueError, match="non-empty and unique"):
-        load_raw_proteome_matrix(path)
+        load_diann_matrix("proteome", path)
 
 
 @pytest.mark.parametrize("quantity", ["invalid", "inf"])
@@ -114,7 +126,7 @@ def test_invalid_quantities_raise(tmp_path, quantity):
         [["P1", "P1", "name", "gene", "description", quantity]],
     )
     with pytest.raises(ValueError):
-        load_raw_proteome_matrix(path)
+        load_diann_matrix("proteome", path)
 
 
 ROLLUP_ANNOTATIONS = [
@@ -151,9 +163,9 @@ def rollup(tmp_path):
     return matrix, metadata
 
 
-def test_rollup_default_preserves_corrected_mapping_and_metadata(rollup):
+def test_rollup_preserves_corrected_mapping_and_metadata(rollup):
     matrix, _ = rollup
-    loaded = load_proteome_matrix(matrix)
+    loaded = load_proteome_rollup(matrix)
     assert loaded.X.shape == (2, 2)
     assert loaded.X.index.tolist() == ["230502_S000940", "230503_S000015"]
     assert loaded.X.index.name == "run_id"
@@ -171,7 +183,7 @@ def test_rollup_default_preserves_corrected_mapping_and_metadata(rollup):
     assert loaded.feature_metadata["rollup_score"].dtype.kind == "f"
     assert loaded.scale == "log2"
     assert loaded.processing_stage == "rollup"
-    included = load_matrix("proteome", matrix, include_pool=True)
+    included = load_matrix("proteome", matrix, include_pool=True, input_format="rollup")
     assert included.X.shape == (3, 2)
     assert included.sample_metadata.iloc[0]["sample_id"] == "Pool_B1_1"
     assert included.sample_metadata.iloc[0]["is_pool"]
@@ -188,7 +200,7 @@ def test_rollup_config_paths_resolve_independently_of_cwd(
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path.parent)
-    loaded = load_proteome_matrix(config_path=config)
+    loaded = load_proteome_rollup(config_path=config)
     assert loaded.source_path == matrix.resolve()
     assert loaded.sample_metadata_path == metadata.resolve()
 
@@ -209,7 +221,7 @@ def test_rollup_rejects_invalid_sample_mapping(rollup, change):
         metadata.loc[0, "sample_id"] = ""
     metadata.to_csv(metadata_path, sep="\t", index=False)
     with pytest.raises(ValueError):
-        load_proteome_matrix(matrix)
+        load_proteome_rollup(matrix)
 
 
 @pytest.mark.parametrize(
@@ -230,7 +242,7 @@ def test_rollup_rejects_invalid_features_or_values(rollup, field, value):
     rows[1][rows[0].index(field)] = value
     write_tsv(matrix, rows[0], rows[1:])
     with pytest.raises(ValueError):
-        load_proteome_matrix(matrix)
+        load_proteome_rollup(matrix)
 
 
 def test_rollup_rejects_duplicate_header_before_pandas_renaming(rollup):
@@ -240,10 +252,10 @@ def test_rollup_rejects_duplicate_header_before_pandas_renaming(rollup):
     rows[0][-1] = rows[0][-2]
     write_tsv(matrix, rows[0], rows[1:])
     with pytest.raises(ValueError, match="Duplicate columns"):
-        load_proteome_matrix(matrix)
+        load_proteome_rollup(matrix)
 
 
-def test_raw_format_is_explicit_and_keeps_linear_scale(tmp_path):
+def test_default_and_explicit_diann_keep_linear_scale(tmp_path):
     path = write_tsv(
         tmp_path / "pg.tsv",
         [*PROTEOME_ANNOTATIONS, RUN],
@@ -252,5 +264,9 @@ def test_raw_format_is_explicit_and_keeps_linear_scale(tmp_path):
     raw = load_matrix("proteome", path, input_format="diann")
     assert raw.scale == "linear"
     assert raw.processing_stage == "diann"
+    for loaded in (load_matrix("proteome", path), load_proteome_matrix(path)):
+        pd.testing.assert_frame_equal(loaded.X, raw.X)
+        assert loaded.scale == "linear"
+        assert loaded.processing_stage == "diann"
     with pytest.raises(ValueError, match="rollup annotation"):
-        load_proteome_matrix(path)
+        load_matrix("proteome", path, input_format="rollup")

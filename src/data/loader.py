@@ -109,9 +109,8 @@ def load_matrix(
     input_format: str | None = None,
     sample_metadata_path: str | Path | None = None,
 ) -> LoadedMatrix:
-    """Load rollup proteome (default) or a DIA-NN source matrix explicitly.
+    """Dispatch to the DIA-NN (default) or proteome rollup reader.
 
-    Proteome defaults to ``rollup``; phosphoproteome defaults to ``diann``.
     A direct path does not change the format. Labels and statistical operations
     belong downstream. Phosphopeptide charge states remain separate features.
     """
@@ -120,11 +119,8 @@ def load_matrix(
     if not isinstance(include_pool, bool):
         raise TypeError("include_pool must be a boolean")
 
-    input_format = (
-        input_format
-        if input_format is not None
-        else ("rollup" if omics == "proteome" else "diann")
-    )
+    if input_format is None:
+        input_format = "diann"
     if input_format not in {"rollup", "diann"}:
         raise ValueError("input_format must be rollup or diann")
     if input_format == "rollup":
@@ -138,6 +134,28 @@ def load_matrix(
         )
     if sample_metadata_path is not None:
         raise ValueError("sample_metadata_path is supported only for rollup input")
+
+    return load_diann_matrix(
+        omics, path, include_pool=include_pool, config_path=config_path
+    )
+
+
+def load_diann_matrix(
+    omics: str,
+    path: str | Path | None = None,
+    *,
+    include_pool: bool = False,
+    config_path: str | Path | None = None,
+) -> LoadedMatrix:
+    """Read a DIA-NN matrix and return aligned abundances and annotations.
+
+    Both proteome and phosphoproteome inputs use linear abundances. Sample IDs
+    are extracted from run names; phosphopeptide charge states remain separate.
+    """
+    if omics not in _MATRIX_SPECS:
+        raise ValueError(f"omics must be one of {sorted(_MATRIX_SPECS)}")
+    if not isinstance(include_pool, bool):
+        raise TypeError("include_pool must be a boolean")
 
     source_path = (
         Path(path).resolve()
@@ -218,29 +236,13 @@ def load_proteome_matrix(
     config_path: str | Path | None = None,
     sample_metadata_path: str | Path | None = None,
 ) -> LoadedMatrix:
-    """Load the log2 rollup matrix used by the proteome benchmark."""
+    """Load proteome data using the default DIA-NN format."""
     return load_matrix(
         "proteome",
         path,
         include_pool=include_pool,
         config_path=config_path,
         sample_metadata_path=sample_metadata_path,
-    )
-
-
-def load_raw_proteome_matrix(
-    path: str | Path | None = None,
-    *,
-    include_pool: bool = False,
-    config_path: str | Path | None = None,
-) -> LoadedMatrix:
-    """Read DIA-NN pg_matrix for source inspection and method comparisons."""
-    return load_matrix(
-        "proteome",
-        path,
-        include_pool=include_pool,
-        config_path=config_path,
-        input_format="diann",
     )
 
 
