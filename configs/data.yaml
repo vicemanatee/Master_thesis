@@ -2,7 +2,7 @@
 datasets:
   proteome_ln:
     omics: proteome
-    input_format: rollup  # rollup or diann
+    input_format: diann  # rollup or diann
     paths_config: path.yaml
     target: LN
     group_column: Patient

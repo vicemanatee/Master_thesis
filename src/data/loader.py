@@ -121,7 +121,9 @@ def load_matrix(
 
     if input_format is None:
         input_format = "diann"
-    if input_format not in {"rollup", "diann"}:
+    if input_format not in {
+        #"rollup",
+          "diann"}:
         raise ValueError("input_format must be rollup or diann")
     if input_format == "rollup":
         if omics != "proteome":
