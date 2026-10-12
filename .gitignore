@@ -51,3 +51,5 @@ wandb/
 *.mzXML
 *.dia
 *.speclib
+
+test.ipynb
