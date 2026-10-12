@@ -8,3 +8,7 @@ matrices:
 clinical:
   path: ../../../BC_Data/raw/SCANB_clinical_supplementary_table_1.xlsx
   sheet_name: SCANB.9206
+
+gene_sets:
+  hallmark: ../../../BC_Data/hallmark gene set/h.all.v2026.1.Hs.symbols.gmt.txt
+

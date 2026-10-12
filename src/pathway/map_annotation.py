@@ -2,9 +2,11 @@
 Author: Li Yangqing liyangqingbuaa@gmail.com
 Date: 2026-10-12 03:59:34
 LastEditors: Li Yangqing liyangqingbuaa@gmail.com
-LastEditTime: 2026-10-12 12:01:04
+LastEditTime: 2026-10-12 14:53:44
 FilePath: /Master_Thesis/src/pathway/map_annotation.py
 Description: mapping feature metadata to gene-set annotations
+
+Need to add feat to store the mapping results. 
 '''
 
 
@@ -18,7 +20,9 @@ ANNOTATION = {
 MISSINGMARKERS = {'', 'NA', 'N/A', 'na', 'n/a', 'nan', 'NaN', 'null', 'Null', 'NULL'}
 
 import pandas as pd
-from ..data.gene_set_loader import GeneSet
+
+from data import GeneSet
+    
 
 def _feature_metadata_to_gene_sets(
         feature_metadata: pd.DataFrame,

@@ -1,7 +1,16 @@
+'''
+Author: Li Yangqing liyangqingbuaa@gmail.com
+Date: 2026-10-12 03:37:35
+LastEditors: Li Yangqing liyangqingbuaa@gmail.com
+LastEditTime: 2026-10-12 14:39:28
+FilePath: /Master_Thesis/src/data/gene_set_loader.py
+Description: load GMT
+'''
 """Read fixed gene-set annotations independently of omics abundance data."""
 
 from pathlib import Path
 from typing import TypedDict
+from config import read_config, resolve_config_path
 
 
 class GeneSet(TypedDict):
@@ -42,3 +51,21 @@ def load_gmt(path: str | Path) -> dict[str, GeneSet]:
     if not gene_sets:
         raise ValueError(f"{source}: no gene sets found")
     return gene_sets
+
+
+def load_hallmark(
+        config_path: str | Path,
+):
+    """
+    Load hallmark gene sets from a config file.
+    """
+
+    config_path = Path(config_path).resolve()
+    config = read_config(config_path)
+
+    hallmark_path = resolve_config_path(
+        config['gene_sets']['hallmark'],
+        owner=config_path,
+    )
+
+    return load_gmt(hallmark_path)
