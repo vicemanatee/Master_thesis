@@ -52,4 +52,6 @@ wandb/
 *.dia
 *.speclib
 
+# Code testing and notebooks
 test.ipynb
+tests/
