@@ -6,7 +6,7 @@ import pytest
 from sklearn.base import clone
 from sklearn.decomposition import PCA
 
-from src.preprocessing import make_pca
+from preprocessing import make_pca
 
 
 def test_pca_matches_sklearn_and_preserves_sample_indices():

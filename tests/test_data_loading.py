@@ -183,7 +183,7 @@ def test_rollup_preserves_corrected_mapping_and_metadata(rollup):
     assert loaded.feature_metadata["rollup_score"].dtype.kind == "f"
     assert loaded.scale == "log2"
     assert loaded.processing_stage == "rollup"
-    included = load_matrix("proteome", matrix, include_pool=True, input_format="rollup")
+    included = load_proteome_rollup(matrix, include_pool=True)
     assert included.X.shape == (3, 2)
     assert included.sample_metadata.iloc[0]["sample_id"] == "Pool_B1_1"
     assert included.sample_metadata.iloc[0]["is_pool"]
@@ -268,5 +268,5 @@ def test_default_and_explicit_diann_keep_linear_scale(tmp_path):
         pd.testing.assert_frame_equal(loaded.X, raw.X)
         assert loaded.scale == "linear"
         assert loaded.processing_stage == "diann"
-    with pytest.raises(ValueError, match="rollup annotation"):
+    with pytest.raises(ValueError, match="input_format"):
         load_matrix("proteome", path, input_format="rollup")
