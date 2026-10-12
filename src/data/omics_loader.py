@@ -1,4 +1,4 @@
-"""Read rollup modeling inputs and explicit DIA-NN source matrices."""
+"""Read omics abundance matrices and their aligned annotations."""
 
 from __future__ import annotations
 

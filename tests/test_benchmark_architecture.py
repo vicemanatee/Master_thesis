@@ -21,7 +21,7 @@ from src.benchmark.runner import evaluate_models
 from src.config import read_config
 from src.data import dataset as dataset_module
 from src.data.dataset import ModelingDataset, load_dataset_config, prepare_dataset
-from src.data.loader import LoadedMatrix
+from src.data.omics_loader import LoadedMatrix
 from src.preprocessing import build_preprocessor, resolve_preprocessing_profile
 
 

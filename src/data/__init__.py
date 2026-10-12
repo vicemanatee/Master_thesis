@@ -1,7 +1,7 @@
 """Data loading for the proteome benchmark and future phosphoproteome work."""
 
 from .clinical import align_clinical_labels, load_clinical_labels
-from .loader import (
+from .omics_loader import (
     LoadedMatrix,
     load_diann_matrix,
     load_matrix,

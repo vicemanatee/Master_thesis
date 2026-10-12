@@ -11,7 +11,7 @@ import pandas as pd
 
 from ..config import read_config, resolve_config_path
 from .clinical import align_clinical_labels, load_clinical_labels
-from .loader import load_matrix
+from .omics_loader import load_matrix
 
 
 @dataclass
