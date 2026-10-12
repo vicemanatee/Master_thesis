@@ -1,6 +1,7 @@
 """Data loading for the proteome benchmark and future phosphoproteome work."""
 
 from .clinical import align_clinical_labels, load_clinical_labels
+from .gene_set_loader import GeneSet, load_gmt
 from .omics_loader import (
     LoadedMatrix,
     load_diann_matrix,
@@ -11,10 +12,12 @@ from .omics_loader import (
 )
 
 __all__ = [
+    "GeneSet",
     "LoadedMatrix",
     "align_clinical_labels",
     "load_clinical_labels",
     "load_diann_matrix",
+    "load_gmt",
     "load_matrix",
     "load_phosphoproteome_matrix",
     "load_proteome_matrix",
