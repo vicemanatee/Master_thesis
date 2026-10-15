@@ -1,0 +1,29 @@
+preprocessing:
+  config: preprocessing.yaml
+  profile: standard
+
+pathway:
+  gene_sets: hallmark
+  standardize: true  # z-score standardization
+
+classifier:
+  name: logistic_regression
+  params:
+    C: 2.0
+    max_iter: 1000
+
+data:
+  config: data.yaml
+  dataset: proteome_ln
+
+cv:
+  n_splits: 5
+  shuffle: true
+  random_state: 42
+
+scoring:
+  - roc_auc
+  - average_precision
+  - balanced_accuracy
+
+output_root: ../results/pathway_ln
