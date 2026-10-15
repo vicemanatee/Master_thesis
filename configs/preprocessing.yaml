@@ -5,9 +5,9 @@ steps:
     enabled: true  # required harmonization; declared log2 inputs pass through
   missing:
     enabled: true
-    max_missing_fraction: 0.3  # measured only on training samples
+    max_missing_fraction: 0.2  # measured only on training samples
   mad:
-    enabled: true
+    enabled: false
     quantile: 0.8  # training MAD quantile; retain features strictly above it
     scale: 1.4826
   impute:
